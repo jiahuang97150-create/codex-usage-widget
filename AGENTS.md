@@ -74,3 +74,19 @@ dotnet test .\CodexUsageWidget.slnx -c Release --no-build
 - Follow `docs/RELEASING.md`; do not invent a second release path.
 - Create or publish a release only after the requested changes are approved and the required CI checks pass.
 - Never reuse or move an existing release tag.
+
+## Cursor Cloud specific instructions
+
+Cloud agents run on Linux. The widget targets `net10.0-windows` (WPF), so a normal `dotnet test` on the Linux SDK stops before any test runs: `Microsoft.WindowsDesktop.App` has no Linux runtime.
+
+- The SDK pinned in `global.json` (10.0.302) is at `/usr/share/dotnet` and on `PATH` as `dotnet`.
+- Restore, build, and publish with `-p:EnableWindowsTargeting=true`.
+- Run the suite with the Windows SDK and Windows Desktop runtime 10.0.10 under Wine, from `/opt/dotnet-win`:
+
+```bash
+WINEPREFIX="$HOME/.wine-dotnet" WINEDEBUG=-all \
+  wine /opt/dotnet-win/dotnet.exe test ./CodexUsageWidget.slnx -c Release -p:EnableWindowsTargeting=true
+```
+
+- `CodexActivityPipeTests.PowerShellBridgeDeliversLifecycleSignalWithoutWidgetExecutable` launches `powershell.exe`. Wine's bundled stub exits immediately, so that one test fails. The other tests run under Wine.
+- Activity-hook command mode runs without opening the window, for example `wine /opt/dotnet-win/dotnet.exe exec <built-dll> --install-activity-hooks`. The WPF window reaches startup under Wine and then exits while shaping text, so visual checks still belong on Windows.
